@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 
 class SolutionComputation:
-    def __init__(self, H_matrices, r = 10):
+    def __init__(self, H_matrices, r = 10, want_to_print=None):
         self.H_matrices = H_matrices
         self.r = r
         self.valid_solutions = {}
@@ -15,6 +15,8 @@ class SolutionComputation:
             list(itertools.product([0, 1], repeat=5)),
             H_matrices.items()
         ))
+        self.want_to_print = want_to_print
+        self.string_want_to_print = "Combinations:\n"
 
     def save_results(self, filename):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -28,9 +30,14 @@ class SolutionComputation:
     def get_valid_solutions(self):
         return self.valid_solutions
     
+    def get_string_want_to_print(self):
+        return self.string_want_to_print
+    
     def compute_Valid_Solutions(self):
         results = []
         for ci_case, (combination, (covariance_matrix, H)) in tqdm(self.tasks, desc="Processing tasks", total=len(self.tasks)):
+            if self.string_want_to_print=="":
+                self.string_want_to_print = f"Combinations:\n{combination}\n"
             result = self.compute_equation(
                 combination,
                 covariance_matrix,
@@ -43,8 +50,7 @@ class SolutionComputation:
         solutions = self.filteringNone(results) # ?not only filtering None, but also make the dictionary
         self.filter_valid_solutions(solutions)
         
-    @staticmethod
-    def compute_equation(combination, covariance_matrix, H, ci_case, r):
+    def compute_equation(self, combination, covariance_matrix, H, ci_case, r):
         n = H.shape[0] - 2  # Number of stocks (n = 5 in this case)
         cols_to_keep = []
 
@@ -69,8 +75,12 @@ class SolutionComputation:
         # Try to solve the reduced system
         try:
             x_reduced = np.linalg.solve(H_reduced, b)
+            if combination == self.want_to_print:
+                self.string_want_to_print += f"ci_case:{ci_case}\n{H_reduced}\n{x_reduced}\n"
             return (combination,covariance_matrix, ci_case, x_reduced, H, H_reduced, b)
         except np.linalg.LinAlgError:
+            if combination == self.want_to_print:
+                self.string_want_to_print += f"ci_case:{ci_case}\n{H_reduced}\n"
             return None  # Return None if there is an error
         
     @staticmethod
